@@ -1,0 +1,66 @@
+/*
+ * css for upsidedown world map
+ */
+html, body { font-family: Georgia; background: #efe9e0;width: 100%; padding: 0; margin: 0; height: 98%; }
+a { color: #864; }
+h1 { 
+	position: absolute; top: 2.5%; width: 100%; text-align:center; 
+	text-shadow: 2px 2px 2px #fff; 
+	z-index: 30;
+}
+h1 div {
+	font-size: 12pt;
+	margin-top: 10px;
+	font-weight: 300;
+}
+
+#map {
+	position: absolute;
+	top: 10%;
+	left: 0;
+	width: 100%;
+	height: 90%;
+}
+ 
+#map svg .sea {
+	fill: #D0DDF0;
+	stroke: none;
+}
+#map svg .osea {
+	fill: none;
+	stroke: #cba;
+	stroke-width:5px;
+}
+#map svg .osea2 {
+	fill: none;
+	stroke: #654;
+	stroke-width:7px;
+}
+
+#map svg .graticule {
+	stroke: #000;
+	fill: none;
+	stroke-opacity: .1;
+}
+
+#map svg .countries {
+	stroke: #000;
+	stroke-width: .3px;
+	fill: #fff;
+	fill-opacity: 0;
+}
+#map svg .cglow, #map svg .cglow2 {
+	fill: #fff;
+	stroke: none;
+}
+#map svg .countries:hover {
+	fill: #c00;
+	fill-opacity: .25;
+	stroke: #000;
+	stroke-width: .8px;
+}
+
+#map .label {
+	font-family: Times New Roman;
+	font-size: 10px;
+}

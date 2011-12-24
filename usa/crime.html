@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<title>United States Crime</title>
+	<script src="../js/lib/jquery.min.js"></script>
+	<script src="../js/lib/jquery.qtip.min.js"></script>
+	<script src="../js/lib/chroma.min.js"></script>
+	<script src="../js/lib/raphael-min.js"></script>
+	<script src="../js/svgmap.js"></script>
+	<link rel="stylesheet" href="style.css" />
+	<link rel="stylesheet" href="../../../svgmap.js/css/style.css" />
+	<link rel="stylesheet" href="tooltips.css" />
+<script>
+
+	$.extend({
+		loadAssets: function(opt) {
+			var data = {};
+			for (var id in opt.urls) {
+				var context = { id: id };
+				$.ajax({
+					url: opt.urls[id],
+					success: function(content) {
+						data[this.id] = content;
+						for (var id2 in opt.urls) {
+							if (!data.hasOwnProperty(id2)) return;
+						}
+						opt.success(data);
+					},
+					context: context
+				});
+			}
+		}
+	});
+
+	$(function() {
+
+		$.loadAssets({
+			urls: {
+				crime: '../data/us-crime2.json'
+			},
+			success: function(content) {
+		
+				// import some classes
+				var SVGMap = svgmap.SVGMap, 
+					Color = chroma.Color;
+					//, Ramp = svgmap.color.scale.Ramp;
+		
+				window.map = new SVGMap('#map');
+				
+				$(window).resize(function() {
+					map.resize();
+				});
+				
+				map.loadMap('../maps/uscrime.svg', function(map) {
+		
+					map.addLayer('sea', 'crime-sea');
+					map.addLayer('context', 'crime-bg');
+					map.addLayer('USA', 'crime-glow', 'hasc');	
+					map.addLayer('USA', 'crime-fg', 'hasc');
+						
+					new svgmap.SymbolGroup({
+						map: map,
+						data: content.crime,
+						type: svgmap.Bubble,
+						filter: function(d) { return d.Population > 400000; },
+						location: function(d) { return d.ll },
+						radius: function(d) { return Math.sqrt(d.Murder2011/d.Population)*1200 },
+						style: function(d) { return 'stroke-width:.5px;fill:#c00;fill-opacity:.4' }
+					});
+					
+					
+					function drawMarkers(distF, radM) {
+					
+						map.clearMarkers();
+					
+						var states = {}, tooltips = {}, c, marker = [], 
+						
+						m = svgmap.marker,
+						city, ll, marker, xy,
+						
+						row = 'Murder2011',
+						
+						radius = function(val, pop) {
+							//return Math.max(2.5, Math.sqrt(val*4) * radM);
+							return Math.max(2.5, Math.sqrt(100000*val/pop)*5 * radM);
+						},
+						
+						color = function(city) {
+							return city.Murder2011 > city.Murder2010 ? '#d00': '#00d';
+						};
+						
+						// display cities as dot markers
+						
+						for (c in content.crime) {
+							city = content.crime[c];
+							ll = new svgmap.LonLat(city.ll[0], city.ll[1]);
+							xy = map.lonlat2xy(ll);
+							marker.push([xy,radius(city[row],city.Population),[city],ll]);
+						}
+						
+						// merge intersecting bubbles
+						var overlap = true,i,j,dist,xy0,xy1,dx,dy,r1,r2,
+						
+						byRadius = function(m1,m2) {
+							return m1[1] - m2[1];
+						},
+						
+						merge = function(i,j) {
+							var c,newmarker = [],ct,m1,m2,m3,r1,r2,ll1,ll2,sumval=0,sumpop=0,
+								x1,x2,y1,y2,f,val1=0,val2=0;
+							for (c in marker) {
+								if (c != i && c != j) newmarker.push(marker[c]);
+								else {
+									if (c == i) m1 = marker[c];
+									else m2 = marker[c];
+								}
+							}
+							// merge cities
+							m3 = [null,null,null,null];
+							m3[2] = [];
+							for (ct in m1[2]) {
+								m3[2].push(m1[2][ct]);
+								val1 += m1[2][ct][row];
+								sumpop += m1[2][ct].Population;
+							}
+							for (ct in m2[2]) {
+								m3[2].push(m2[2][ct]);
+								val2 += m2[2][ct][row];
+								sumpop += m2[2][ct].Population;
+							}
+							m3[1] = radius(val1+val2, sumpop);
+							// merge position
+							
+							
+							x1 = m1[0][0]; y1 = m1[0][1];
+							x2 = m2[0][0]; y2 = m2[0][1];
+							f = val2 / (val1+val2);
+							m3[0] = [x1+f*(x2-x1), y1+f*(y2-y1)];
+							
+							// merge lonlat
+							ll1 = m1[3]; ll2 = m2[3];
+							m3[3] = new svgmap.LonLat(ll1.lon + (ll2.lon-ll1.lon)*f, ll1.lat + (ll2.lat-ll1.lat)*f);
+							newmarker.push(m3);
+							marker = newmarker;
+							
+						};
+						
+						marker.sort(byRadius);
+						
+						while (overlap) {
+							overlap = false;
+							for (i in marker) {
+								for (j in marker) {
+									if (i == j) continue;
+									xy0 = marker[i][0];
+									xy1 = marker[j][0];
+									dx = xy1[0] - xy0[0];
+									dy = xy1[1] - xy0[1];
+									r1 = marker[i][1];
+									r2 = marker[j][1];
+									dist = Math.sqrt(dx*dx+dy*dy);
+									if (dist*distF < r1+r2) {
+										merge(i,j);
+										overlap = true;
+										break;
+									}
+								}
+								if (overlap) break;
+							}
+						}
+						
+						for (c in marker) {
+							map.addMarker(new m.DotMarker(marker[c][3],marker[c][2][0],marker[c][1]));
+						}
+					}
+					
+					//window.f = 0.1;
+					//window.q = 1.02;
+					//drawMarkers(q,f);
+					//window.redraw = drawMarkers;
+				});
+			}
+		});
+	});
+</script>
+</head>
+<body>
+	<h1>Murder Rates in Large Cities: January – June 2011</h1>
+	<div id="map">
+		
+	</div>
+	<script>
+/*	$(window).keyup(function(evt) {
+		evt.preventDefault();
+		if (evt.keyCode == 39) {
+			f += .1;
+		} else if (evt.keyCode == 37) {
+			f -= .1;
+		} 
+		
+		//q = Math.min(1, 1-f);
+		
+		redraw(q,f);
+	});*/
+	</script>
+</body>
+</html>

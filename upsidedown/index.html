@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Upsidedown World Map</title>
+	<script src="../js/lib/jquery.min.js"></script>
+	<script src="../js/lib/raphael-min.js"></script>
+	<script src="../js/svgmap.js"></script>
+	<link rel="stylesheet" href="style.css" />
+	<script>
+
+	$(function() {
+		
+		var 
+		map = new svgmap.SVGMap('#map');
+		
+		map.loadMap('../maps/world-flipped-ne.svg', function() {
+			
+			map.addLayer('sea');
+			map.addLayer('countries', 'cglow');
+			
+			map.addFilter('mglow', 'glow', { knockout: true, color: '#59c', blur: 2, strength: 0 });
+			map.applyFilter('cglow', 'mglow');
+			
+			map.addLayer('graticule');
+			
+			map.addLayer('countries', 'cglow2');
+			map.addFilter('iglow', 'glow', {  inner: true, color: '#fca', blur: 4, strength: 2 });
+			map.applyFilter('cglow2', 'iglow');
+			
+			map.addLayer('countries');
+			
+			map.addLayer('sea','osea2');
+			map.addLayer('sea','osea');
+			
+			
+			// let's add some labels
+			$.ajax({
+				url: 'countryinfo.json',
+				success: function(data) {
+					if (type(data) == "string") data = JSON.parse(data);
+					
+					var countries = 'USA,CAN,AUS,BRA,IND,CHN,RUS,COD,MEX,DZA,SAU,ZAF,ARG,KAZ,MNG,FRA,ATA'.split(',');
+					
+					new svgmap.SymbolGroup({
+						map: map,
+						data: data,
+						type: svgmap.Label,
+						style: 'font-size: 11px;stroke-linecap:round;stroke-linejoin:round;font-family:Georgia;stroke:#fdfdfd;opacity:.9;fill:#fff;stroke-width:5px',
+						location: function(d) { return [d.LON, d.LAT] },
+						text: function(d) { return d.Name.toUpperCase() },
+						filter: function(d) { return countries.indexOf(d.ISO3) >= 0 }
+					});
+					
+					new svgmap.SymbolGroup({
+						map: map,
+						data: data,
+						type: svgmap.Label,
+						style: 'font-size: 11px;font-family:Georgia;',
+						location: function(d) { return [d.LON, d.LAT] },
+						text: function(d) { return d.Name.toUpperCase() },
+						filter: function(d) { return countries.indexOf(d.ISO3) >= 0 }
+					});
+					
+				}
+			});
+			
+		}, { padding: 10 });
+	});
+	
+</script>
+</head>
+<body>
+	
+	<h1>Upsidedown World Map<div><a href="http://www.flourish.org/upsidedownmap/">Upside what?</a></div></h1>
+	<div id="map">
+		
+	</div>
+	<!--
+	map code
+	svgmap world -sg10 -p2 --flip --lon0 155 
+	-->
+</body>
+</html>
